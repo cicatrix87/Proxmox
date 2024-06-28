@@ -3,7 +3,7 @@
 # Copyright (c) 2021-2024 tteck
 # Author: tteck (tteckster)
 # License: MIT
-# https://github.com/cicatrix87/Proxmox/raw/main/LICENSE
+# https://github.com/tteck/Proxmox/raw/main/LICENSE
 
 source /dev/stdin <<< "$FUNCTIONS_FILE_PATH"
 color
@@ -36,6 +36,7 @@ cat <<EOF >/etc/traefik/traefik.yaml
 providers:
   file:
     directory: /etc/traefik/conf.d/
+    watch: true
 
 entryPoints:
   web:
@@ -50,24 +51,40 @@ entryPoints:
     http:
       tls:
         certResolver: letsencrypt
-  traefik:
-    address: ':8080'
 
 certificatesResolvers:
   letsencrypt:
     acme:
-      email: "foo@bar.com"
+      email: ${CF_API_EMAIL}
       storage: /etc/traefik/ssl/acme.json
-      tlsChallenge: {}
+      dnsChallenge:
+        provider: cloudflare
+        resolvers:
+          - 1.1.1.1:53
+          - 1.0.0.1:53
+http:
+  middlewares:
+    simpleauth:
+      basicAuth:
+        users:
+          - admin:$apr1$iepfm7ls$yJ9TLksHLhHjPj61lbT/H/
 
+  routers:
+    api:
+      rule: Host(`traefik.privatebiewer.uk`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))
+      service: api@internal
+      middlewares: simpleauth
+      tls:
+        certresolvers: letsencrypt
 api:
   dashboard: true
-  insecure: true
+  insecure: false
 
 log:
   filePath: /var/log/traefik/traefik.log
   format: json
   level: INFO
+  maxAge: 3
 
 accessLog:
   filePath: /var/log/traefik/traefik-access.log
@@ -97,6 +114,8 @@ Type=notify
 ExecStart=/usr/bin/traefik --configFile=/etc/traefik/traefik.yaml
 Restart=on-failure
 ExecReload=/bin/kill -USR1 \$MAINPID
+Environment="CF_API_EMAIL=sebastian@biewer.com.de
+Environment="CF_API_KEY=BkLuPLs07JEPbcTc4Yq46UieyL8skP6kId4jeQa9
 
 [Install]
 WantedBy=multi-user.target
