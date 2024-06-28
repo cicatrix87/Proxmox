@@ -55,27 +55,12 @@ entryPoints:
 certificatesResolvers:
   letsencrypt:
     acme:
-      email: ${CF_API_EMAIL}
       storage: /etc/traefik/ssl/acme.json
       dnsChallenge:
         provider: cloudflare
         resolvers:
-          - 1.1.1.1:53
-          - 1.0.0.1:53
-http:
-  middlewares:
-    simpleauth:
-      basicAuth:
-        users:
-          - admin:$apr1$iepfm7ls$yJ9TLksHLhHjPj61lbT/H/
-
-  routers:
-    api:
-      rule: Host(`traefik.privatebiewer.uk`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))
-      service: api@internal
-      middlewares: simpleauth
-      tls:
-        certresolvers: letsencrypt
+          - "1.1.1.1:53"
+          - "1.0.0.1:53"
 api:
   dashboard: true
   insecure: false
@@ -104,6 +89,26 @@ accessLog:
 EOF
 msg_ok "Created Traefik configuration"
 
+cat <<'EOF' >/etc/traefik/conf.d/api_internal.yaml
+http:
+  middlewares:
+    simpleauth:
+      basicAuth:
+        users:
+          - admin:$apr1$iepfm7ls$yJ9TLksHLhHjPj61lbT/H/
+
+  routers:
+    api:
+      entryPoints:
+        - "websecure"
+      rule: Host(`${APPLICATION,,}.privatebiewer.uk`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))
+      service: api@internal
+      middlewares: simpleauth
+      tls:
+        certresolver: letsencrypt
+EOF
+msg_ok "Created Traefik dynamic configuration for internal_api"
+
 msg_info "Creating Service"
 cat <<EOF >/etc/systemd/system/traefik.service
 [Unit]
@@ -114,8 +119,8 @@ Type=notify
 ExecStart=/usr/bin/traefik --configFile=/etc/traefik/traefik.yaml
 Restart=on-failure
 ExecReload=/bin/kill -USR1 \$MAINPID
-Environment="CF_API_EMAIL=sebastian@biewer.com.de
-Environment="CF_API_KEY=BkLuPLs07JEPbcTc4Yq46UieyL8skP6kId4jeQa9
+Environment=TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL=sebastian@biewer.com.de
+Environment=CLOUDFLARE_DNS_API_TOKEN=BkLuPLs07JEPbcTc4Yq46UieyL8skP6kId4jeQa9
 
 [Install]
 WantedBy=multi-user.target
