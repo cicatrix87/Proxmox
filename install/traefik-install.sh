@@ -101,7 +101,7 @@ http:
     api:
       entryPoints:
         - "websecure"
-      rule: Host(`${APPLICATION,,}.privatebiewer.uk`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))
+      rule: Host(`traefik2.privatebiewer.uk`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))
       service: api@internal
       middlewares: simpleauth
       tls:
