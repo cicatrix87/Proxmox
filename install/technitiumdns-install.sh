@@ -34,7 +34,7 @@ msg_ok "Installed Technitium DNS"
 
 msg_info "Mount Technitium Config Folder"
 $STD mount -t nfs 192.168.178.254:/export/data/technitium/config/ /opt/technitium/dns
-msk_ok "Mounted Technitium Config Folder"
+msg_ok "Mounted Technitium Config Folder"
 
 motd_ssh
 customize
